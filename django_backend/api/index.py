@@ -1,16 +1,31 @@
 """
-Vercel Serverless Entry Point — api/index.py
-All HTTP traffic is routed here via vercel.json.
-Django WSGI app is loaded once per cold start.
+Vercel Serverless Entry Point — django_backend/api/index.py
+All HTTP traffic is routed here via vercel.json at repo root.
+
+Deployment layout on Vercel (/var/task = repo root):
+  /var/task/
+    vercel.json
+    django_backend/
+      api/index.py   ← THIS FILE
+      saravanaco/
+      apps/
+      ...
+    public/
+      index.html
+      ...
 """
 import os
 import sys
 
-# Make sure the project root is on the Python path
-# Vercel runs from the repo root; django_backend/ is our project root
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# Add django_backend/ to Python path so Django can find saravanaco.settings
+# __file__ = /var/task/django_backend/api/index.py
+# parent   = /var/task/django_backend/           ← this is what we need on sys.path
+_DJANGO_BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _DJANGO_BACKEND not in sys.path:
+    sys.path.insert(0, _DJANGO_BACKEND)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "saravanaco.settings")
+os.environ.setdefault("VERCEL", "1")
 
 from django.core.wsgi import get_wsgi_application  # noqa: E402
 

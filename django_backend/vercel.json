@@ -1,22 +1,4 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "15mb",
-        "runtime": "python3.11"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "api/index.py"
-    }
-  ],
-  "env": {
-    "DJANGO_SETTINGS_MODULE": "saravanaco.settings"
-  }
+  "_comment": "DO NOT USE THIS FILE. Deploy is configured at the REPO ROOT (d:/spl/vercel.json). This file is kept only as documentation. If Vercel picks up this file instead, it means your Vercel project Root Directory is set to django_backend/ — change it to blank (repo root) in Vercel dashboard.",
+  "_instructions": "Vercel Dashboard → Project → Settings → General → Root Directory → clear the field (leave blank = repo root)"
 }
