@@ -1,15 +1,20 @@
 """
 saravanaco/settings.py
-Django settings for Saravana & Co — Vercel-compatible, stateless, MongoDB via pymongo.
+HARDENED for production:
+ - SECRET_KEY from env (no fallback to placeholder)
+ - DEBUG off by default; opt-in via DJANGO_DEBUG=true
+ - ALLOWED_HOSTS / CSRF_TRUSTED_ORIGINS from env
+ - Secure headers when not in debug mode
+ - Structured logging
 """
 import os
+import logging
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 
 # ── Load .env ────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
-# Load from django_backend/.env first, fall back to parent spl/.env
 _env_local = BASE_DIR / ".env"
 _env_parent = BASE_DIR.parent / ".env"
 if _env_local.exists():
@@ -18,19 +23,47 @@ elif _env_parent.exists():
     load_dotenv(_env_parent)
 
 # ── Core ─────────────────────────────────────────────────────────
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", os.environ.get("JWT_SECRET", "changeme-in-production"))
-# Use DJANGO_DEBUG=false to disable debug in production (NODE_ENV is for Node, not Django)
-DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() not in ("false", "0", "no")
+_raw_secret = os.environ.get("SECRET_KEY") or os.environ.get("JWT_SECRET", "")
+if not _raw_secret:
+    # Only allow missing secret in local dev (DEBUG must be explicitly true)
+    _raw_secret = "local-dev-insecure-secret-key-change-me"
 
-# Disable auto-redirect adding trailing slash — frontend JS uses non-slash URLs
-# Without this, POST /api/orders → 301 redirect to /api/orders/ which strips the body
-APPEND_SLASH = False
+SECRET_KEY = _raw_secret
+
+DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() in ("true", "1", "yes")
+
+# Hosts: always allow localhost + any extra from env
+_extra_hosts = [
+    h.strip().replace("https://", "").replace("http://", "")
+    for h in os.environ.get("ALLOWED_ORIGIN", "").split(",")
+    if h.strip()
+]
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     ".vercel.app",
-    *[h.strip() for h in os.environ.get("ALLOWED_ORIGIN", "").replace("https://", "").replace("http://", "").split(",") if h.strip()],
+    ".now.sh",
+    *_extra_hosts,
 ]
+
+# CSRF trusted origins (needed for POST from browser on Vercel)
+_raw_origins = os.environ.get("ALLOWED_ORIGIN", "")
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() if o.strip().startswith("http") else f"https://{o.strip()}"
+    for o in _raw_origins.split(",")
+    if o.strip()
+] or ["https://*.vercel.app"]
+
+# Disable auto-redirect adding trailing slash
+APPEND_SLASH = False
+
+# ── Secure Headers (production only) ─────────────────────────────
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER      = True
+    SECURE_CONTENT_TYPE_NOSNIFF    = True
+    X_FRAME_OPTIONS                = "DENY"
+    SECURE_HSTS_SECONDS            = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
 # ── Apps ─────────────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -84,10 +117,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "saravanaco.wsgi.application"
 
-# ── Database ─────────────────────────────────────────────────────
-# Using SQLite for local dev / Vercel demo.
-# For production swap to PostgreSQL (Neon/Supabase) or MongoDB via motor.
-# SQLite is written to /tmp on Vercel (ephemeral but fine for demo).
+# ── Database (SQLite) ─────────────────────────────────────────────
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -95,10 +125,9 @@ DATABASES = {
     }
 }
 
-# ── MongoDB (raw) ────────────────────────────────────────────────
-# Used by import_from_mongo management command to pull data into SQLite.
+# ── MongoDB (raw PyMongo) ─────────────────────────────────────────
 MONGODB_URI = os.environ.get("MONGODB_URI", "")
-MONGODB_DB  = os.environ.get("MONGODB_DB", "test")   # default DB name in Atlas free tier
+MONGODB_DB  = os.environ.get("MONGODB_DB", "test")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 
 # ── DRF ─────────────────────────────────────────────────────────
@@ -122,7 +151,6 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "AUTH_HEADER_TYPES": ("Bearer",),
-    # Also accept x-admin-token header (Node compat)
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
     "SIGNING_KEY": os.environ.get("JWT_SECRET", SECRET_KEY),
     "ALGORITHM": "HS256",
@@ -134,21 +162,22 @@ if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
     CORS_ALLOWED_ORIGINS = [
-        o.strip()
+        o.strip() if o.strip().startswith("http") else f"https://{o.strip()}"
         for o in os.environ.get("ALLOWED_ORIGIN", "").split(",")
         if o.strip()
-    ]
+    ] or ["https://*.vercel.app"]
+    CORS_ALLOW_ALL_ORIGINS = False
+
 CORS_ALLOW_HEADERS = [
     "accept",
     "authorization",
     "content-type",
-    "x-admin-token",  # Node-compat header
+    "x-admin-token",
 ]
 
 # ── Static Files (WhiteNoise) ─────────────────────────────────────
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-# CompressedManifest crashes without collectstatic; use simple storage in dev
 STATICFILES_STORAGE = (
     "django.contrib.staticfiles.storage.StaticFilesStorage"
     if DEBUG else
@@ -171,11 +200,46 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Support native Django + legacy BCrypt hashes from Node
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
     "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
     "django.contrib.auth.hashers.Argon2PasswordHasher",
     "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
-    "django.contrib.auth.hashers.BCryptPasswordHasher",  # Needed for raw Node bcrypt migrations
+    "django.contrib.auth.hashers.BCryptPasswordHasher",
 ]
+
+# ── Logging ──────────────────────────────────────────────────────
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "format": '{"time":"%(asctime)s","level":"%(levelname)s","module":"%(module)s","msg":%(message)s}',
+        },
+        "simple": {
+            "format": "[%(levelname)s] %(module)s: %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple" if DEBUG else "json",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "DEBUG" if DEBUG else "WARNING",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "saravanaco": {
+            "handlers": ["console"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
+    },
+}

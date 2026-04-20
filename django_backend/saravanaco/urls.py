@@ -1,5 +1,8 @@
 """
 saravanaco/urls.py — Root URL configuration + frontend static serving
+FIXED:
+ - PUBLIC_ROOT resolves correctly both locally (d:/spl/public) and on Vercel
+   (/var/task/public which sits alongside django_backend/)
 """
 import os
 from django.contrib import admin
@@ -8,11 +11,19 @@ from django.http import HttpResponse, Http404
 from django.conf import settings
 
 # ── Frontend file server ──────────────────────────────────────────
-# Serves the public/ directory (index.html, cart_page.html, etc.)
-# This replaces Node's express.static('public')
-PUBLIC_ROOT = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), '..', '..', '../public')
-)
+# On Vercel, the repo root is /var/task, so layout is:
+#   /var/task/django_backend/   ← cwd / this file lives here
+#   /var/task/public/           ← frontend
+# Locally:
+#   d:\spl\django_backend\      ← this file
+#   d:\spl\public\              ← frontend
+#
+# Either way: go up TWO dirs from saravanaco/ → up one to django_backend/
+# then up one more to repo root, then into public/
+_HERE = os.path.dirname(os.path.abspath(__file__))          # …/saravanaco
+_DJANGO_BACKEND = os.path.dirname(_HERE)                    # …/django_backend
+_REPO_ROOT = os.path.dirname(_DJANGO_BACKEND)               # …/spl  (or /var/task)
+PUBLIC_ROOT = os.path.normpath(os.path.join(_REPO_ROOT, 'public'))
 
 _MIME = {
     '.html': 'text/html; charset=utf-8',
@@ -23,6 +34,9 @@ _MIME = {
     '.jpg':  'image/jpeg',
     '.ico':  'image/x-icon',
     '.svg':  'image/svg+xml',
+    '.woff':  'font/woff',
+    '.woff2': 'font/woff2',
+    '.webp':  'image/webp',
 }
 
 def serve_public(request, path=''):
@@ -52,7 +66,7 @@ urlpatterns = [
     # Django admin UI
     path("django-admin/", admin.site.urls),
 
-    # ── API Routes (mirrors Node Express mounts exactly) ──────────
+    # ── API Routes ────────────────────────────────────────────────
     path("api/admin/",        include("apps.accounts.urls")),
     path("api/products/",     include("apps.catalog.urls.products")),
     path("api/products",      include("apps.catalog.urls.products")),   # no-slash alias
