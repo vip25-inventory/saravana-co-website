@@ -11,7 +11,7 @@ from django.conf import settings
 # Serves the public/ directory (index.html, cart_page.html, etc.)
 # This replaces Node's express.static('public')
 PUBLIC_ROOT = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), '..', '..', 'public')
+    os.path.join(os.path.dirname(__file__), '..', '..', '../public')
 )
 
 _MIME = {
