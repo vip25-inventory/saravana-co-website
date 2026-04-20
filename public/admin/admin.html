@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Saravana &amp; Co. | Admin Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                        "navy-sidebar": "#0f172a",
+                        "accent-gold": "#d4af37"
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 h-screen overflow-hidden">
+<div class="flex h-full">
+<!-- Sidebar -->
+<aside class="w-64 bg-navy-sidebar text-slate-300 flex flex-col shrink-0">
+<div class="p-6 flex items-center gap-3">
+<div class="size-10 bg-primary rounded-xl flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-2xl">diamond</span>
+</div>
+<div>
+<h1 class="text-white font-bold leading-none">Saravana &amp; Co.</h1>
+<p class="text-xs text-slate-400 mt-1 uppercase tracking-wider">Admin Panel</p>
+</div>
+</div>
+<nav class="flex-1 px-4 space-y-1 mt-4">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-primary text-white" href="/admin/admin.html">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800 hover:text-white transition-colors" href="/admin/product_management.html">
+<span class="material-symbols-outlined">sell</span>
+<span class="text-sm font-medium">Products</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800 hover:text-white transition-colors" href="/admin/offer_management.html">
+<span class="material-symbols-outlined">local_offer</span>
+<span class="text-sm font-medium">Offers</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800 hover:text-white transition-colors" href="/admin/price_mangement.html">
+<span class="material-symbols-outlined">payments</span>
+<span class="text-sm font-medium">Price Controls</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800 hover:text-white transition-colors" href="/admin/banners.html">
+<span class="material-symbols-outlined">view_carousel</span>
+<span class="text-sm font-medium">Banners</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800 hover:text-white transition-colors" href="/admin/export_page.html">
+<span class="material-symbols-outlined">file_download</span>
+<span class="text-sm font-medium">Export Orders</span>
+</a>
+</nav>
+<div class="p-4 border-t border-slate-700">
+<button id="admin-logout-btn" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-900/30 text-red-400 hover:text-red-300 transition-colors">
+<span class="material-symbols-outlined">logout</span>
+<span class="text-sm font-medium">Logout</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+<!-- Top Navbar -->
+<header class="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0">
+<div class="flex items-center flex-1 max-w-lg">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input id="order-search-input" class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl pl-11 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary/20" placeholder="Search orders, products..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="size-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-8 w-px bg-slate-200 dark:bg-slate-800"></div>
+<div class="flex items-center gap-3 pl-2">
+<div class="text-right hidden sm:block">
+<p id="admin-username" class="text-sm font-semibold leading-none">Anand S.</p>
+<p class="text-xs text-slate-500 mt-1">Super Admin</p>
+</div>
+<div class="size-10 rounded-full bg-gradient-to-br from-primary to-[#D4870A] flex items-center justify-center text-white font-bold text-sm">A</div>
+</div>
+</div>
+</header>
+<!-- Scrollable Content -->
+<main class="flex-1 overflow-y-auto p-8 space-y-8">
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-4">
+<div class="size-12 rounded-lg bg-accent-gold/10 flex items-center justify-center text-accent-gold">
+<span class="material-symbols-outlined">shopping_bag</span>
+</div>
+<div>
+<p class="text-sm text-slate-500 font-medium">Total Orders</p>
+<h3 id="stat-orders" class="text-2xl font-bold">1,284</h3>
+<p class="text-xs text-green-600 font-semibold mt-1 flex items-center">
+<span class="material-symbols-outlined text-xs mr-1">trending_up</span> +12.5%
+                            </p>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-4">
+<div class="size-12 rounded-lg bg-accent-gold/10 flex items-center justify-center text-accent-gold">
+<span class="material-symbols-outlined">inventory</span>
+</div>
+<div>
+<p class="text-sm text-slate-500 font-medium">Total Products</p>
+<h3 id="stat-products" class="text-2xl font-bold">4,560</h3>
+<p class="text-xs text-green-600 font-semibold mt-1 flex items-center">
+<span class="material-symbols-outlined text-xs mr-1">trending_up</span> +2.1%
+                            </p>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-4">
+<div class="size-12 rounded-lg bg-accent-gold/10 flex items-center justify-center text-accent-gold">
+<span class="material-symbols-outlined">campaign</span>
+</div>
+<div>
+<p class="text-sm text-slate-500 font-medium">Active Offers</p>
+<h3 id="stat-offers" class="text-2xl font-bold">12</h3>
+<p class="text-xs text-slate-400 font-semibold mt-1">Stable</p>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-4">
+<div class="size-12 rounded-lg bg-accent-gold/10 flex items-center justify-center text-accent-gold">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+</div>
+<div>
+<p class="text-sm text-slate-500 font-medium">Revenue Today</p>
+<h3 id="stat-revenue" class="text-2xl font-bold">₹45,230</h3>
+<p class="text-xs text-green-600 font-semibold mt-1 flex items-center">
+<span class="material-symbols-outlined text-xs mr-1">trending_up</span> +8.4%
+                            </p>
+</div>
+</div>
+</div>
+<!-- Recent Orders Section -->
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+<div class="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+<h2 class="text-xl font-bold">Recent Orders</h2>
+<div class="flex items-center gap-3">
+<button id="refresh-orders-btn" class="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-semibold transition-colors">
+<span class="material-symbols-outlined text-sm">refresh</span>
+                                Refresh
+                            </button>
+<button id="export-orders-btn" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 text-sm font-semibold shadow-sm shadow-primary/20 transition-all">
+<span class="material-symbols-outlined text-sm">description</span>
+                                Export to Excel
+                            </button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-slate-50 dark:bg-slate-800/50">
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order ID</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Customer Name</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Phone</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Products</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Amount</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Date</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Action</th>
+</tr>
+</thead>
+<tbody id="orders-tbody" class="divide-y divide-slate-100 dark:divide-slate-800">
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-6 py-4 text-sm font-semibold text-primary">#ORD-9024</td>
+<td class="px-6 py-4 text-sm font-medium">Rajesh Kumar</td>
+<td class="px-6 py-4 text-sm text-slate-500">+91 98765 43210</td>
+<td class="px-6 py-4 text-sm text-slate-500">Silk Saree, Gold Chain</td>
+<td class="px-6 py-4 text-sm font-bold">₹12,450</td>
+<td class="px-6 py-4 text-sm text-slate-500">Oct 24, 2023</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-green-100 text-green-700 uppercase">Delivered</span>
+</td>
+<td class="px-6 py-4">
+<button class="text-slate-400 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-6 py-4 text-sm font-semibold text-primary">#ORD-9023</td>
+<td class="px-6 py-4 text-sm font-medium">Priya Sharma</td>
+<td class="px-6 py-4 text-sm text-slate-500">+91 87654 32109</td>
+<td class="px-6 py-4 text-sm text-slate-500">Traditional Bangles (2)</td>
+<td class="px-6 py-4 text-sm font-bold">₹4,800</td>
+<td class="px-6 py-4 text-sm text-slate-500">Oct 24, 2023</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700 uppercase">In Transit</span>
+</td>
+<td class="px-6 py-4">
+<button class="text-slate-400 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-6 py-4 text-sm font-semibold text-primary">#ORD-9022</td>
+<td class="px-6 py-4 text-sm font-medium">Suresh V.</td>
+<td class="px-6 py-4 text-sm text-slate-500">+91 76543 21098</td>
+<td class="px-6 py-4 text-sm text-slate-500">Pattu Dhoti, Shirt</td>
+<td class="px-6 py-4 text-sm font-bold">₹3,200</td>
+<td class="px-6 py-4 text-sm text-slate-500">Oct 23, 2023</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-100 text-orange-700 uppercase">Processing</span>
+</td>
+<td class="px-6 py-4">
+<button class="text-slate-400 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-6 py-4 text-sm font-semibold text-primary">#ORD-9021</td>
+<td class="px-6 py-4 text-sm font-medium">Anjali Rao</td>
+<td class="px-6 py-4 text-sm text-slate-500">+91 91234 56789</td>
+<td class="px-6 py-4 text-sm text-slate-500">Designer Necklace</td>
+<td class="px-6 py-4 text-sm font-bold">₹24,900</td>
+<td class="px-6 py-4 text-sm text-slate-500">Oct 23, 2023</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-green-100 text-green-700 uppercase">Delivered</span>
+</td>
+<td class="px-6 py-4">
+<button class="text-slate-400 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-6 py-4 text-sm font-semibold text-primary">#ORD-9020</td>
+<td class="px-6 py-4 text-sm font-medium">Vikram Singh</td>
+<td class="px-6 py-4 text-sm text-slate-500">+91 99887 76655</td>
+<td class="px-6 py-4 text-sm text-slate-500">Temple Jewellery Set</td>
+<td class="px-6 py-4 text-sm font-bold">₹18,500</td>
+<td class="px-6 py-4 text-sm text-slate-500">Oct 22, 2023</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-100 text-red-700 uppercase">Cancelled</span>
+</td>
+<td class="px-6 py-4">
+<button class="text-slate-400 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<p id="orders-count" class="text-sm text-slate-500 font-medium">Showing 5 of 1,284 orders</p>
+<div id="pagination-container" class="flex gap-2">
+<button class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+<script src="/js/api.js"></script>
+
+<script src="/js/admin-dashboard.js"></script>
+</body></html>

@@ -1,0 +1,21 @@
+# Node Modules (if accidentally deployed from root)
+node_modules/
+
+# Python caching
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+
+# Database
+db.sqlite3
+*.db
+/tmp/saravanaco.db
+
+# Output artifacts
+staticfiles/
+static/

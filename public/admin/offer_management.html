@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Offer Management - Saravana &amp; Co</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>tailwind.config={darkMode:"class",theme:{extend:{colors:{"primary":"#ec5b13","background-light":"#f8f6f6","background-dark":"#221610","navy-sidebar":"#0f172a"},fontFamily:{"display":["Public Sans"]},borderRadius:{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"}}}}</script>
+<style>body{font-family:'Public Sans',sans-serif}.material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}</style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="flex h-screen overflow-hidden">
+
+<!-- Sidebar -->
+<aside class="w-64 bg-navy-sidebar text-slate-300 flex flex-col shrink-0">
+  <div class="p-6 flex items-center gap-3 border-b border-slate-800">
+    <div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white">
+      <span class="material-symbols-outlined">storefront</span>
+    </div>
+    <div>
+      <h1 class="text-white text-base font-bold leading-tight">Saravana &amp; Co</h1>
+      <p class="text-slate-400 text-xs uppercase tracking-wider">Admin Panel</p>
+    </div>
+  </div>
+  <nav class="flex-1 p-4 flex flex-col gap-1">
+    <a class="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" href="/admin/admin.html">
+      <span class="material-symbols-outlined">dashboard</span><span class="text-sm font-medium">Dashboard</span>
+    </a>
+    <a class="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" href="/admin/product_management.html">
+      <span class="material-symbols-outlined">sell</span><span class="text-sm font-medium">Products</span>
+    </a>
+    <a class="flex items-center gap-3 px-3 py-2 bg-primary text-white rounded-lg shadow-lg shadow-primary/20" href="/admin/offer_management.html">
+      <span class="material-symbols-outlined">local_offer</span><span class="text-sm font-medium">Offers</span>
+    </a>
+    <a class="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" href="/admin/price_mangement.html">
+      <span class="material-symbols-outlined">payments</span><span class="text-sm font-medium">Price Controls</span>
+    </a>
+    <a class="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" href="/admin/banners.html">
+      <span class="material-symbols-outlined">view_carousel</span><span class="text-sm font-medium">Banners</span>
+    </a>
+    <a class="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" href="/admin/export_page.html">
+      <span class="material-symbols-outlined">file_download</span><span class="text-sm font-medium">Export Orders</span>
+    </a>
+    <div class="mt-auto pt-4 border-t border-slate-800">
+      <button id="admin-logout-btn" class="w-full flex items-center gap-3 px-3 py-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors">
+        <span class="material-symbols-outlined">logout</span><span class="text-sm font-medium">Logout</span>
+      </button>
+    </div>
+  </nav>
+</aside>
+
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto flex flex-col">
+  <header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-8 sticky top-0 z-10">
+    <h2 class="text-xl font-bold">Offer Management</h2>
+    <button id="add-offer-btn" class="px-4 h-10 bg-primary hover:bg-primary/90 text-white text-sm font-bold rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 transition-all">
+      <span class="material-symbols-outlined text-lg">add</span> New Offer
+    </button>
+  </header>
+
+  <div class="p-8">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+      <table class="w-full text-left">
+        <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+          <tr>
+            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Title</th>
+            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Discount</th>
+            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Start Date</th>
+            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">End Date</th>
+            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+            <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="offers-tbody" class="divide-y divide-slate-100 dark:divide-slate-800">
+          <tr><td colspan="6" class="px-6 py-10 text-center text-slate-400">Loading offers...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- Add/Edit Offer Modal -->
+<div id="offer-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg">
+    <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <h3 id="offer-modal-title" class="text-xl font-bold">Create Offer</h3>
+      <button id="offer-modal-close" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <form id="offer-form" class="p-6 space-y-4">
+      <div class="space-y-1">
+        <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Offer Title *</label>
+        <input id="offer-title" required class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/40" placeholder="e.g. Diwali Sale" type="text"/>
+      </div>
+      <div class="space-y-1">
+        <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Description</label>
+        <textarea id="offer-description" rows="2" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/40" placeholder="Optional description..."></textarea>
+      </div>
+      <div class="space-y-1">
+        <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Discount Percentage *</label>
+        <input id="offer-discount" required min="1" max="99" step="0.01" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/40" placeholder="e.g. 15"/>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-1">
+          <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Start Date *</label>
+          <input id="offer-start" required type="date" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"/>
+        </div>
+        <div class="space-y-1">
+          <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">End Date *</label>
+          <input id="offer-end" required type="date" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"/>
+        </div>
+      </div>
+      <label class="flex items-center gap-2 cursor-pointer text-sm font-medium">
+        <input id="offer-active" type="checkbox" checked class="rounded accent-primary">
+        Active
+      </label>
+      <div class="flex justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+        <button type="button" onclick="document.getElementById('offer-modal').classList.add('hidden')" class="px-6 h-11 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold rounded-xl text-sm">Cancel</button>
+        <button id="save-offer-btn" type="submit" class="px-8 h-11 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-lg shadow-primary/20 text-sm">Save Offer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/admin-offers.js"></script>
+</body></html>

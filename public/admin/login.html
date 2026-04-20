@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Login | Saravana & Co.</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&family=Yatra+One&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          "primary": "#ec5b13",
+          "gold": "#D4870A",
+          "navy": "#0f172a",
+        },
+        fontFamily: { display: ["Public Sans", "sans-serif"], heading: ["Yatra One", "cursive"] }
+      }
+    }
+  }
+</script>
+<style>
+  body { font-family: 'Public Sans', sans-serif; }
+  .login-bg {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0c1220 100%);
+    min-height: 100vh;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+  }
+  .float-icon { animation: float 3s ease-in-out infinite; }
+  .error-msg { display: none; }
+  .error-msg.visible { display: flex; }
+</style>
+</head>
+<body class="login-bg flex items-center justify-center px-4">
+
+<!-- Decorative background circles -->
+<div class="fixed inset-0 overflow-hidden pointer-events-none">
+  <div class="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
+  <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-gold/5 rounded-full blur-3xl"></div>
+</div>
+
+<div class="w-full max-w-md relative z-10">
+  <!-- Logo -->
+  <div class="text-center mb-8">
+    <div class="float-icon inline-flex items-center justify-center w-20 h-20 bg-primary/10 border border-primary/20 rounded-2xl mb-4">
+      <span class="material-symbols-outlined text-primary text-4xl">diamond</span>
+    </div>
+    <h1 class="font-heading text-3xl text-white mb-1">Saravana & Co.</h1>
+    <p class="text-slate-400 text-sm">Admin Control Panel</p>
+  </div>
+
+  <!-- Card -->
+  <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
+    <h2 class="text-xl font-bold text-white mb-6 text-center">Sign In to Dashboard</h2>
+
+    <!-- Error Message -->
+    <div id="error-msg" class="error-msg items-center gap-3 bg-red-900/30 border border-red-700/40 rounded-xl px-4 py-3 mb-5">
+      <span class="material-symbols-outlined text-red-400 text-sm">error</span>
+      <p id="error-text" class="text-red-400 text-sm font-medium"></p>
+    </div>
+
+    <form id="login-form" class="space-y-5">
+      <div>
+        <label class="block text-sm font-semibold text-slate-300 mb-2">Username</label>
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">person</span>
+          <input id="username" type="text" placeholder="admin"
+            class="w-full bg-slate-800 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500
+                   focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"/>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-300 mb-2">Password</label>
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">lock</span>
+          <input id="password" type="password" placeholder="••••••••"
+            class="w-full bg-slate-800 border border-slate-700 rounded-xl pl-10 pr-12 py-3 text-white placeholder-slate-500
+                   focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"/>
+          <button type="button" id="toggle-pw"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+            <span class="material-symbols-outlined text-lg" id="eye-icon">visibility</span>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" id="login-btn"
+        class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl transition-all
+               shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-base mt-2">
+        <span id="btn-text">Sign In</span>
+        <span class="material-symbols-outlined" id="btn-icon">login</span>
+      </button>
+    </form>
+
+    <p class="text-center text-xs text-slate-500 mt-6">
+      Protected area. Unauthorized access is prohibited.
+    </p>
+  </div>
+
+  <p class="text-center text-xs text-slate-600 mt-6">
+    © 2024 Saravana & Co. All rights reserved.
+  </p>
+</div>
+
+<script>
+  // Redirect if already logged in
+  if (sessionStorage.getItem('admin_token')) {
+    window.location.href = '/admin/admin.html';
+  }
+
+  // Toggle password visibility
+  document.getElementById('toggle-pw').addEventListener('click', function() {
+    const pw = document.getElementById('password');
+    const icon = document.getElementById('eye-icon');
+    if (pw.type === 'password') {
+      pw.type = 'text'; icon.textContent = 'visibility_off';
+    } else {
+      pw.type = 'password'; icon.textContent = 'visibility';
+    }
+  });
+
+  // Login form submit
+  document.getElementById('login-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('login-btn');
+    const btnText = document.getElementById('btn-text');
+    const btnIcon = document.getElementById('btn-icon');
+    const errorDiv = document.getElementById('error-msg');
+    const errorText = document.getElementById('error-text');
+
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!username || !password) {
+      errorText.textContent = 'Please enter username and password.';
+      errorDiv.classList.add('visible'); return;
+    }
+
+    btn.disabled = true;
+    btnText.textContent = 'Signing in…';
+    btnIcon.textContent = 'hourglass_empty';
+    errorDiv.classList.remove('visible');
+
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+
+      sessionStorage.setItem('admin_token', data.token);
+      sessionStorage.setItem('admin_username', data.username || username);
+
+      btnText.textContent = 'Success!';
+      btnIcon.textContent = 'check_circle';
+      btn.classList.replace('bg-primary', 'bg-green-600');
+
+      setTimeout(() => { window.location.href = '/admin/admin.html'; }, 600);
+    } catch (err) {
+      errorText.textContent = err.message || 'Invalid credentials.';
+      errorDiv.classList.add('visible');
+      btn.disabled = false;
+      btnText.textContent = 'Sign In';
+      btnIcon.textContent = 'login';
+      btn.classList.remove('bg-green-600');
+      btn.classList.add('bg-primary');
+    }
+  });
+</script>
+</body>
+</html>

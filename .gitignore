@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Django
+db.sqlite3
+*.log
+
+# Env
+.env
+
+# Vercel
+.vercel
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
