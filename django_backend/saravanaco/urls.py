@@ -39,8 +39,36 @@ _MIME = {
     '.webp':  'image/webp',
 }
 
+# Allowlisted extensions for public file serving
+_ALLOWED_EXTENSIONS = {
+    '.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg',
+    '.ico', '.svg', '.woff', '.woff2', '.webp', '.txt', '.xml',
+}
+
+# Cache durations (seconds) per content type
+_CACHE_SECONDS = {
+    'text/html; charset=utf-8': 0,           # never cache HTML
+    'application/javascript':   86400,        # 1 day
+    'text/css':                 86400,
+    'image/png':                604800,       # 7 days
+    'image/jpeg':               604800,
+    'image/webp':               604800,
+    'image/svg+xml':            604800,
+    'image/x-icon':             604800,
+    'font/woff':                2592000,      # 30 days
+    'font/woff2':               2592000,
+}
+
+
 def serve_public(request, path=''):
-    """Serve any file from public/ directory. Falls back to index.html for bare /."""
+    """Serve files from public/ directory.
+    
+    Security controls:
+     - Directory traversal blocked via normpath comparison
+     - Extension allowlist rejects unknown file types
+     - Security headers added to every response
+     - HTML is never cached
+    """
     if not path:
         path = 'index.html'
 
@@ -52,14 +80,28 @@ def serve_public(request, path=''):
     if os.path.isdir(safe_path):
         safe_path = os.path.join(safe_path, 'index.html')
 
+    # Security: only serve allowlisted extensions
+    ext = os.path.splitext(safe_path)[1].lower()
+    if ext not in _ALLOWED_EXTENSIONS:
+        raise Http404
+
     if not os.path.isfile(safe_path):
         raise Http404
 
-    ext = os.path.splitext(safe_path)[1].lower()
     content_type = _MIME.get(ext, 'application/octet-stream')
+    cache_secs   = _CACHE_SECONDS.get(content_type, 3600)
 
     with open(safe_path, 'rb') as f:
-        return HttpResponse(f.read(), content_type=content_type)
+        response = HttpResponse(f.read(), content_type=content_type)
+
+    # Security headers on every static file response
+    response['X-Content-Type-Options'] = 'nosniff'
+    if cache_secs == 0:
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    else:
+        response['Cache-Control'] = f'public, max-age={cache_secs}'
+
+    return response
 
 
 urlpatterns = [

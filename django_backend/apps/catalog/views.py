@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import action
 from django.db.models import Q
+from decimal import Decimal
 from django.utils.text import slugify
 from saravanaco.pagination import CustomNodePagination
 from .models import Category, ProductType, Product, Banner, Offer
@@ -167,68 +168,100 @@ class ProductViewSet(viewsets.ModelViewSet):
     def bulk_upload(self, request):
         if 'file' not in request.FILES:
             return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         file_obj = request.FILES['file']
         filename = file_obj.name.lower()
+
+        # ── Security: enforce file size limits ───────────────────────────
+        MAX_CSV_SIZE  = 2 * 1024 * 1024   # 2 MB
+        MAX_JSON_SIZE = 5 * 1024 * 1024   # 5 MB
+        MAX_ROWS      = 500
+
+        if filename.endswith('.csv') and file_obj.size > MAX_CSV_SIZE:
+            return Response({"error": "CSV file must be under 2 MB."}, status=400)
+        elif filename.endswith('.json') and file_obj.size > MAX_JSON_SIZE:
+            return Response({"error": "JSON file must be under 5 MB."}, status=400)
+
+        # ── Security: reject files containing null bytes ─────────────────
+        raw_sample = file_obj.read(512)
+        if b'\x00' in raw_sample:
+            return Response({"error": "File contains invalid binary content."}, status=400)
+        file_obj.seek(0)  # reset after sampling
+
         success = 0
-        failed = []
-        
+        failed  = []
+
         def process_row(row, idx):
             try:
                 name = row.get('product_name')
                 if not name:
                     return False, f"Row {idx}: product_name missing"
-                
-                price = row.get('price')
+
+                price  = row.get('price')
                 images = row.get('image_urls', '')
                 if isinstance(images, str):
                     images = [u.strip() for u in images.split(',') if u.strip()]
-                
+
                 cat_slug = row.get('category')
                 cat = None
                 if cat_slug:
-                    cat, _ = Category.objects.get_or_create(slug=slugify(cat_slug), defaults={'name': cat_slug})
-                
+                    cat, _ = Category.objects.get_or_create(
+                        slug=slugify(cat_slug), defaults={'name': cat_slug}
+                    )
+
                 Product.objects.update_or_create(
                     name=name,
                     defaults={
-                        'price': float(price) if price else 0.0,
+                        'price':       float(price) if price else 0.0,
                         'description': row.get('description', ''),
-                        'image_urls': images,
-                        'stock': int(row.get('stock_qty') or 0),
-                        'category': cat
+                        'image_urls':  images,
+                        'stock':       int(row.get('stock_qty') or 0),
+                        'category':    cat,
                     }
                 )
                 return True, None
             except Exception as e:
                 return False, f"Row {idx}: {str(e)}"
-        
+
         if filename.endswith('.csv'):
             import codecs
             import csv
             reader = csv.DictReader(codecs.iterdecode(file_obj, 'utf-8'))
             for idx, row in enumerate(reader, start=1):
+                if idx > MAX_ROWS:
+                    failed.append(f"Row {idx}+: upload limited to {MAX_ROWS} rows per batch.")
+                    break
                 ok, err = process_row(row, idx)
-                if ok: success += 1
-                else: failed.append(err)
+                if ok:
+                    success += 1
+                else:
+                    failed.append(err)
+
         elif filename.endswith('.json'):
             import json
             try:
                 data = json.load(file_obj)
                 if not isinstance(data, list):
                     return Response({"error": "JSON must be an array"}, status=400)
+                if len(data) > MAX_ROWS:
+                    return Response(
+                        {"error": f"JSON array exceeds maximum of {MAX_ROWS} rows per upload."},
+                        status=400
+                    )
                 for idx, row in enumerate(data, start=1):
                     ok, err = process_row(row, idx)
-                    if ok: success += 1
-                    else: failed.append(err)
+                    if ok:
+                        success += 1
+                    else:
+                        failed.append(err)
             except Exception as e:
                 return Response({"error": f"Invalid JSON: {str(e)}"}, status=400)
         else:
-            return Response({"error": "Only CSV and JSON allowed"}, status=400)
-            
+            return Response({"error": "Only CSV and JSON files are allowed."}, status=400)
+
         return Response({
             "success_count": success,
-            "failed_rows": failed
+            "failed_rows":   failed,
         })
 
 
@@ -282,3 +315,110 @@ class BulkPriceUpdateView(APIView):
                 except (ValueError, TypeError):
                     pass
         return Response({"message": f"Updated {updated} product price(s)."})
+
+class SinglePriceUpdateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def put(self, request, *args, **kwargs):
+        product_id = request.data.get('product_id')
+        price = request.data.get('price')
+        if not product_id or price is None:
+            return Response({"error": "Missing product_id or price"}, status=400)
+        
+        try:
+            product = Product.objects.get(id=product_id)
+            if product.original_price is None:
+                product.original_price = product.price
+            product.price = Decimal(str(price))
+            product.save()
+            
+            serializer = ProductSerializer(product)
+            return Response({"product": serializer.data})
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found"}, status=404)
+        except (ValueError, TypeError):
+            return Response({"error": "Invalid price"}, status=400)
+
+
+class SelectiveDiscountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        product_ids = request.data.get('product_ids', [])
+        discount_type = request.data.get('discount_type')
+        discount_value = request.data.get('discount_value')
+
+        if not product_ids or not discount_type or discount_value is None:
+            return Response({"error": "Missing parameters"}, status=400)
+
+        try:
+            discount_value = Decimal(str(discount_value))
+        except (ValueError, TypeError):
+            return Response({"error": "Invalid discount value"}, status=400)
+
+        products = Product.objects.filter(id__in=product_ids)
+        updated = 0
+        for product in products:
+            if product.original_price is None:
+                product.original_price = product.price
+
+            base_price = product.original_price
+            if discount_type == 'percentage':
+                new_price = base_price - (base_price * (discount_value / Decimal('100.0')))
+            else: # fixed
+                new_price = base_price - discount_value
+            
+            if new_price < 0:
+                new_price = Decimal('0')
+                
+            product.price = new_price
+            product.save()
+            updated += 1
+
+        return Response({"count": updated, "message": f"Updated {updated} products."})
+
+
+class GlobalDiscountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        pct = request.data.get('discount_percentage')
+        if pct is None:
+            return Response({"error": "Missing discount_percentage"}, status=400)
+        
+        try:
+            pct = Decimal(str(pct))
+        except (ValueError, TypeError):
+            return Response({"error": "Invalid percentage"}, status=400)
+
+        updated = 0
+        products = Product.objects.all()
+        for product in products:
+            if product.original_price is None:
+                product.original_price = product.price
+            
+            base_price = product.original_price
+            new_price = base_price - (base_price * (pct / Decimal('100.0')))
+            if new_price < 0:
+                new_price = Decimal('0')
+                
+            product.price = new_price
+            product.save()
+            updated += 1
+            
+        return Response({"message": f"Global discount of {pct}% applied to {updated} products."})
+
+
+class UndoOfferView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        products = Product.objects.filter(original_price__isnull=False)
+        updated = 0
+        for product in products:
+            product.price = product.original_price
+            product.original_price = None
+            product.save()
+            updated += 1
+
+        return Response({"message": "Prices restored successfully", "restored_count": updated})

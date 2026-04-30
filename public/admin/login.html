@@ -106,10 +106,18 @@
   </p>
 </div>
 
+<script src="/js/api.js"></script>
 <script>
-  // Redirect if already logged in
-  if (sessionStorage.getItem('admin_token')) {
-    window.location.href = '/admin/admin.html';
+  // Redirect if already logged in WITH a valid (non-expired) token
+  if (sessionStorage.getItem('admin_token') && sessionStorage.getItem('admin_token_expiry')) {
+    const expiry = parseInt(sessionStorage.getItem('admin_token_expiry') || '0', 10);
+    if (expiry && Date.now() < expiry) {
+      window.location.href = '/admin/admin.html';
+    } else {
+      // Token exists but has expired — clear it silently
+      sessionStorage.removeItem('admin_token');
+      sessionStorage.removeItem('admin_token_expiry');
+    }
   }
 
   // Toggle password visibility
@@ -156,7 +164,8 @@
 
       if (!res.ok) throw new Error(data.error || 'Login failed');
 
-      sessionStorage.setItem('admin_token', data.token);
+      // Store token with expiry via shared API helper
+      API.storeToken(data.token);
       sessionStorage.setItem('admin_username', data.username || username);
 
       btnText.textContent = 'Success!';

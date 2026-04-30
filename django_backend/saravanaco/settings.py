@@ -4,14 +4,16 @@ HARDENED for production:
  - SECRET_KEY from env (no fallback to placeholder)
  - DEBUG off by default; opt-in via DJANGO_DEBUG=true
  - ALLOWED_HOSTS / CSRF_TRUSTED_ORIGINS from env
- - Secure headers when not in debug mode
+ - Secure headers + CSP when not in debug mode
  - Structured logging
+ - DRF throttling (login: 10/min, anon: 200/day, user: 1000/day)
 """
 import os
 import logging
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 # ── Load .env ────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,14 +25,24 @@ elif _env_parent.exists():
     load_dotenv(_env_parent)
 
 # ── Core ─────────────────────────────────────────────────────────
+_INSECURE_FALLBACK = "local-dev-insecure-secret-key-change-me"
 _raw_secret = os.environ.get("SECRET_KEY") or os.environ.get("JWT_SECRET", "")
 if not _raw_secret:
-    # Only allow missing secret in local dev (DEBUG must be explicitly true)
-    _raw_secret = "local-dev-insecure-secret-key-change-me"
+    _raw_secret = _INSECURE_FALLBACK
+
+_is_debug = os.environ.get("DJANGO_DEBUG", "false").lower() in ("true", "1", "yes")
+
+# Block deployment with the insecure fallback key in production
+if not _is_debug and _raw_secret == _INSECURE_FALLBACK:
+    raise ImproperlyConfigured(
+        "SECRET_KEY must be set to a strong random value in production. "
+        "Generate one with: python -c \"from django.core.management.utils import "
+        "get_random_secret_key; print(get_random_secret_key())\""
+    )
 
 SECRET_KEY = _raw_secret
 
-DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() in ("true", "1", "yes")
+DEBUG = False
 
 # Hosts: always allow localhost + any extra from env
 _extra_hosts = [
@@ -59,11 +71,24 @@ APPEND_SLASH = False
 
 # ── Secure Headers (production only) ─────────────────────────────
 if not DEBUG:
-    SECURE_BROWSER_XSS_FILTER      = True
-    SECURE_CONTENT_TYPE_NOSNIFF    = True
-    X_FRAME_OPTIONS                = "DENY"
-    SECURE_HSTS_SECONDS            = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_BROWSER_XSS_FILTER        = True
+    SECURE_CONTENT_TYPE_NOSNIFF      = True
+    X_FRAME_OPTIONS                  = "DENY"
+    SECURE_HSTS_SECONDS              = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS   = True
+    SECURE_HSTS_PRELOAD              = True
+    SECURE_REFERRER_POLICY           = "strict-origin-when-cross-origin"
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+    SESSION_COOKIE_SECURE            = True   # only send session cookie over HTTPS
+    CSRF_COOKIE_SECURE               = True   # only send CSRF cookie over HTTPS
+    SESSION_COOKIE_HTTPONLY          = True   # block JS access to session cookie
+    CSRF_COOKIE_HTTPONLY             = False  # must remain readable by CSRF middleware
+    SESSION_COOKIE_SAMESITE          = "Lax"  # CSRF mitigation
+    # SECURE_SSL_REDIRECT is intentionally NOT set:
+    # Vercel terminates TLS at the edge; setting this causes redirect loops.
+
+# Silence the SSL-redirect check — Vercel handles HTTPS at the proxy
+SILENCED_SYSTEM_CHECKS = ["security.W008"]
 
 # ── Apps ─────────────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -88,6 +113,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "saravanaco.middleware.SecurityHeadersMiddleware",   # CSP + Permissions-Policy
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -144,17 +170,27 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.JSONRenderer",
     ),
     "EXCEPTION_HANDLER": "saravanaco.exceptions.custom_exception_handler",
+    # ── Throttling ───────────────────────────────────────────────
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon":  "200/day",    # unauthenticated public API
+        "user":  "1000/day",   # authenticated admin API
+        "login": "10/min",     # login endpoint (LoginRateThrottle)
+    },
 }
 
 # ── JWT ──────────────────────────────────────────────────────────
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
+    "ACCESS_TOKEN_LIFETIME":  timedelta(hours=2),   # reduced from 8h → 2h
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
     "SIGNING_KEY": os.environ.get("JWT_SECRET", SECRET_KEY),
     "ALGORITHM": "HS256",
-    "UPDATE_LAST_LOGIN": False,
+    "UPDATE_LAST_LOGIN": True,   # track last login for audit
 }
 
 # ── CORS ─────────────────────────────────────────────────────────

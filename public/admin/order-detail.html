@@ -163,7 +163,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('order-id-badge').textContent = `#ORD-${orderId}`;
 
   try {
-    const { order, items } = await API.fetchAPI(`/orders/${orderId}`);
+    const order = await API.fetchAPI(`/orders/${orderId}`);
+    const items = order.items || [];
     document.getElementById('order-loading').classList.add('hidden');
     document.getElementById('order-content').classList.remove('hidden');
 
@@ -229,7 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       try {
         await API.fetchAPI(`/orders/${orderId}`, {
-          method: 'PUT', body: JSON.stringify(payload)
+          method: 'PATCH', body: JSON.stringify(payload)
         });
         API.showToast('Customer details saved successfully!');
       } catch (err) {
@@ -239,7 +240,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
   } catch (e) {
-    document.getElementById('order-loading').textContent = 'Error loading order: ' + e.message;
+    const loadingEl = document.getElementById('order-loading');
+    loadingEl.classList.remove('hidden');
+    loadingEl.textContent = 'Error loading order: ' + e.message;
   }
 });
 </script>

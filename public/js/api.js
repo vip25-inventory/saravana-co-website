@@ -1,9 +1,16 @@
 /**
  * api.js – Shared API client for Saravana & Co frontend
- * Handles all fetch calls, JWT injection for admin pages, and errors
+ * SECURITY HARDENED:
+ *  - Token expiry enforced client-side (mirrors 2h JWT lifetime)
+ *  - On any 401, token is cleared immediately and admin is redirected
+ *  - requireAdmin() checks both token presence AND expiry
+ *  - Logout clears both token and expiry timestamp
  */
 
 const API_BASE = '/api';
+
+// JWT lifetime in ms — must match server's ACCESS_TOKEN_LIFETIME (2 hours)
+const TOKEN_LIFETIME_MS = 2 * 60 * 60 * 1000;
 
 /**
  * Make an API request
@@ -19,16 +26,18 @@ async function fetchAPI(endpoint, options = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  // Inject JWT for admin pages
-  const token = sessionStorage.getItem('admin_token');
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  // Inject JWT for admin pages — check expiry first
+  const token = _getValidToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
 
   if (res.status === 401) {
-    // Session expired – redirect to login if on admin page
+    // Session expired or token invalid — clear and redirect immediately
     if (window.location.pathname.includes('/admin/')) {
-      sessionStorage.removeItem('admin_token');
+      _clearToken();
       window.location.href = '/admin/login.html';
       return;
     }
@@ -50,11 +59,47 @@ async function fetchAPI(endpoint, options = {}) {
 }
 
 /**
- * Check admin auth – redirect to login if no token
- * Call at the top of every admin page
+ * Retrieve the stored token only if it has not expired.
+ * Returns null if token is missing or stale.
+ */
+function _getValidToken() {
+  const token  = sessionStorage.getItem('admin_token');
+  const expiry = parseInt(sessionStorage.getItem('admin_token_expiry') || '0', 10);
+
+  if (!token) return null;
+
+  // If expiry is missing (old session) or past, treat as expired
+  if (!expiry || Date.now() > expiry) {
+    _clearToken();
+    return null;
+  }
+
+  return token;
+}
+
+/**
+ * Store a JWT token with an expiry timestamp.
+ * @param {string} token - JWT string from login response
+ */
+function _storeToken(token) {
+  sessionStorage.setItem('admin_token', token);
+  sessionStorage.setItem('admin_token_expiry', String(Date.now() + TOKEN_LIFETIME_MS));
+}
+
+/**
+ * Remove token + expiry from sessionStorage.
+ */
+function _clearToken() {
+  sessionStorage.removeItem('admin_token');
+  sessionStorage.removeItem('admin_token_expiry');
+}
+
+/**
+ * Check admin auth – redirect to login if no token or token expired.
+ * Call at the top of every admin page.
  */
 function requireAdmin() {
-  const token = sessionStorage.getItem('admin_token');
+  const token = _getValidToken();
   if (!token) {
     window.location.href = '/admin/login.html';
     return false;
@@ -66,7 +111,7 @@ function requireAdmin() {
  * Admin logout
  */
 function adminLogout() {
-  sessionStorage.removeItem('admin_token');
+  _clearToken();
   window.location.href = '/admin/login.html';
 }
 
@@ -74,7 +119,9 @@ function adminLogout() {
  * Format INR currency
  */
 function formatINR(amount) {
-  return '₹' + parseFloat(amount).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return '₹' + parseFloat(amount).toLocaleString('en-IN', {
+    minimumFractionDigits: 0, maximumFractionDigits: 0
+  });
 }
 
 /**
@@ -82,7 +129,8 @@ function formatINR(amount) {
  */
 function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', {
-    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
   });
 }
 
@@ -112,4 +160,9 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.remove(), 3500);
 }
 
-window.API = { fetchAPI, requireAdmin, adminLogout, formatINR, formatDate, showToast };
+// Expose public API — _storeToken is also exposed so login.html can call it
+window.API = {
+  fetchAPI, requireAdmin, adminLogout,
+  storeToken: _storeToken,
+  formatINR, formatDate, showToast,
+};

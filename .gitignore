@@ -8,8 +8,10 @@ __pycache__/
 db.sqlite3
 *.log
 
-# Env
+# Env — never commit secrets
 .env
+*.env
+django_backend/.env
 
 # Vercel
 .vercel
